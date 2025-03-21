@@ -30,7 +30,6 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self.cabinet_joint_friction = cabinet_joint_friction
         self.episode_stats = None
         self.drawer_id = None
-        self.num = None
 
         self.prepackaged_config = prepackaged_config
         if self.prepackaged_config:
@@ -54,7 +53,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         )  # dummy path; to be replaced later
         ret["rgb_overlay_cameras"] = ["overhead_camera"]
         ret["shader_dir"] = "rt"
-        self.station_name = "mk_station_original"
+        self.station_name = "mk_station_recolor"
         self.light_mode = "simple"
         ret["disable_bad_material"] = True
 
@@ -128,10 +127,8 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         loader.fix_root_link = True
         self.art_obj = loader.load(filename)
         self.art_obj.name = 'cabinet'
-        print("cabinet loaded")
         # TODO: This pose can be tuned for different rendering approachs.
-        self.art_obj.set_pose(sapien.Pose([-0.295, -0.2, 0.017], [1, 0, 0, 0]))
-        print("cabinet loaded1")
+        self.art_obj.set_pose(sapien.Pose([-0.295, 0, 0.017], [1, 0, 0, 0]))
         for joint in self.art_obj.get_active_joints():
             # friction seems more important
             # joint.set_friction(0.1)
@@ -151,7 +148,10 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
 
         reconfigure = options.get("reconfigure", False)
         self.set_episode_rng(seed)
-        self.drawer_id = self._episode_rng.choice(self.drawer_ids)
+        
+        # ここではランダム選択ではなく、全ての引き出しを順番に使う
+        # drawer_ids は既に ["top", "middle", "bottom"] などに設定されていると仮定
+        self.current_drawer_idx = 0
 
         if self.prepackaged_config:
             _reconfigure = self._additional_prepackaged_config_reset(options)
@@ -160,35 +160,17 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         options["reconfigure"] = reconfigure
 
         self._initialize_episode_stats()
+        obs, info = super().reset(seed=self._episode_seed, options=options)
+        
+        # 初回の drawer を設定（ここで drawer_objs を辞書として管理している前提の場合）
+        current_drawer = self.drawer_ids[self.current_drawer_idx]
+        self.drawer_obj = self.drawer_objs[current_drawer]
 
-        obs, info = super().reset(seed=self._episode_seed, options=options) # articulations are loaded here
-        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
-
-        # setup cabinet qpos
-        obj_init_options = options.get("obj_init_options", {})
-        obj_init_options = obj_init_options.copy()
-        cabinet_init_qpos = obj_init_options.get("cabinet_init_qpos", None)
-        if cabinet_init_qpos is not None:
-            if isinstance(cabinet_init_qpos, float):
-                # set qpos for target cabinet joint
-                tmp = [0.0] * self.art_obj.dof
-                tmp[self.joint_idx] = cabinet_init_qpos
-                cabinet_init_qpos = tmp
-            self.art_obj.set_qpos(cabinet_init_qpos)
-        else:
-            self.art_obj.set_qpos([0.0] * self.art_obj.dof) # ensure that the drawer is closed
-        obs = self.get_obs()
-
-        info.update(
-            {
-                "drawer_pose_wrt_robot_base": self.agent.robot.pose.inv()
-                * self.drawer_obj.pose,
-                "cabinet_pose_wrt_robot_base": self.agent.robot.pose.inv()
-                * self.art_obj.pose,
-                "station_name": self.station_name,
-                "light_mode": self.light_mode,
-            }
-        )
+        info.update({
+            "current_drawer": current_drawer,
+            "station_name": self.station_name,
+            "light_mode": self.light_mode,
+        })
         return obs, info
 
     def _additional_prepackaged_config_reset(self, options):
@@ -244,21 +226,13 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
     def evaluate(self, **kwargs):
         qpos = self.art_obj.get_qpos()[self.joint_idx]
         self.episode_stats["qpos"] = "{:.3f}".format(qpos)
-        if qpos >= 0.2 and self.num == None: #qposが0.2以上かつopenのタスク中だったら
-            self.num = 1 #openできたら1にする
-        print(f"------------------------------{self.num}------------------------------------------------------")#一時的に追加
-        return dict(success = self.num == 1 and qpos <= 0.2, qpos=qpos, episode_stats=self.episode_stats)
+        return dict(success=qpos >= 0.15, qpos=qpos, episode_stats=self.episode_stats)
 
     def get_language_instruction(self, **kwargs):
-        if self.num == None:
-            print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
-            print(f"open {self.drawer_id} drawer")
-            return f"open {self.drawer_id} drawer"
-        print(f"close {self.drawer_id} drawer")
-        return f"close {self.drawer_id} drawer"
+        return f"open {self.drawer_id} drawer"
 
 
-@register_env("OpenDrawerCustomInScene-v0", max_episode_steps=200)
+@register_env("OpenDrawerCustomInScene-v0", max_episode_steps=113)
 class OpenDrawerCustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
     drawer_ids = ["top", "middle", "bottom"]
 

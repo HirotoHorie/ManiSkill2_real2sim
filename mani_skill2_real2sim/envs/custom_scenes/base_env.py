@@ -192,7 +192,7 @@ class CustomSceneEnv(BaseEnv):
                 # Should be 0.017 instead of 0.017/2
                 builder.add_box_visual(half_size=np.array([10.0, 10.0, 0.017/2]))
             elif self.scene_name == "dummy_drawer":
-                builder.add_box_visual(half_size=np.array([10.0, 10.0, 0.017]), color=[1, 1, 1])
+                builder.add_box_visual(half_size=np.array([10.0, 10.0, 0.017]), color=[0, 0, 0])
                 # builder.add_box_visual(half_size=np.array([10.0, 10.0, 0.017]), color=[0.6054843 , 0.34402566, 0.17013837])
             elif self.scene_name == "dummy_tabletop":
                 _pose = sapien.Pose([-0.295, 0, 0.017 + 0.865 / 2])

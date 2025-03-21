@@ -1,59 +1,83 @@
 <robot name="mk_station" version="1.0">
-  <joint name="top_drawer_joint" type="prismatic">
+<!-- 引き出し1のjointの定義-->
+  <joint name="top_drawer1_joint" type="prismatic">
     <limit lower="0" upper="0.5" effort="0.00000" velocity="0.00000"/>
     <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.00000 0.66800"/>
-    <parent link="body"/>
-    <child link="top_drawer"/>
+    <parent link="body1"/>
+    <child link="top_drawer1"/>
     <axis xyz="1.00000 0.00000 0.00000"/>
   </joint>
   <joint name="middle_drawer_joint" type="prismatic">
     <limit lower="0" upper="0.5" effort="0.00000" velocity="0.00000"/>
     <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.00000 0.42300"/>
-    <parent link="body"/>
+    <parent link="body1"/>
     <child link="middle_drawer"/>
     <axis xyz="1.00000 0.00000 0.00000"/>
   </joint>
-  <joint name="bottom_drawer_joint" type="prismatic">
+  <joint name="bottom_drawer1_joint" type="prismatic">
     <limit lower="0" upper="0.5" effort="0.00000" velocity="0.00000"/>
     <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.00000 0.17800"/>
-    <parent link="body"/>
-    <child link="bottom_drawer"/>
+    <parent link="body1"/>
+    <child link="bottom_drawer1"/>
+    <axis xyz="1.00000 0.00000 0.00000"/>
+<!-- 引き出し2のjointの定義-->
+  </joint>
+    <joint name="top_drawer2_joint" type="prismatic">
+    <limit lower="0" upper="0.5" effort="0.00000" velocity="0.00000"/>
+    <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.10000 0.66800"/>
+    <parent link="body2"/>
+    <child link="top_drawer2"/>
     <axis xyz="1.00000 0.00000 0.00000"/>
   </joint>
-  <link name="body">
-    <collision name="body_back_collision">
-      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.30500 0.00000 0.42250"/>
+  <joint name="middle_drawer2_joint" type="prismatic">
+    <limit lower="0" upper="0.5" effort="0.00000" velocity="0.00000"/>
+    <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.10000 0.42300"/>
+    <parent link="body2"/>
+    <child link="middle_drawer2"/>
+    <axis xyz="1.00000 0.00000 0.00000"/>
+  </joint>
+  <joint name="bottom_drawer2_joint" type="prismatic">
+    <limit lower="0" upper="0.5" effort="0.00000" velocity="0.00000"/>
+    <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.10000 0.17800"/>
+    <parent link="body2"/>
+    <child link="bottom_drawer2"/>
+    <axis xyz="1.00000 0.00000 0.00000"/>
+  </joint>
+<!-- 引き出し1のbody1の定義-->
+  <link name="body1">
+    <collision name="body1_back_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.30500 0.0000 0.42250"/>
       <geometry>
         <box size="0.02000 0.61500 0.84500"/>
       </geometry>
     </collision>
-    <visual name="body_back">
-      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.30500 0.00000 0.42250"/>
+    <visual name="body1_back">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.30500 0.0000 0.42250"/>
       <material name="gray_wooden"/>
       <geometry>
         <box size="0.02000 0.61500 0.84500"/>
       </geometry>
     </visual>
-    <collision name="body_left_collision">
+    <collision name="body1_left_collision">
       <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 -0.29750 0.42250"/>
       <geometry>
         <box size="0.59000 0.02000 0.84500"/>
       </geometry>
     </collision>
-    <visual name="body_left">
+    <visual name="body1_left">
       <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 -0.29750 0.42250"/>
       <material name="gray_wooden"/>
       <geometry>
         <box size="0.59000 0.02000 0.84500"/>
       </geometry>
     </visual>
-    <collision name="body_right_collision">
+    <collision name="body1_right_collision">
       <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.29750 0.42250"/>
       <geometry>
         <box size="0.59000 0.02000 0.84500"/>
       </geometry>
     </collision>
-    <visual name="body_right">
+    <visual name="body1_right">
       <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.29750 0.42250"/>
       <material name="gray_wooden"/>
       <geometry>
@@ -67,14 +91,71 @@
       </geometry>
     </collision>
     <visual name="tabletop">
-      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.00000 1.85500"/>
-      <material name="red_drawer"/>
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.00000 0.85500"/>
+      <material name="green_drawer"/>
       <geometry>
         <box size="0.63000 0.61500 0.02000"/>
       </geometry>
     </visual>
   </link>
-  <link name="top_drawer">
+<!-- 引き出し2のbody2の定義-->
+  <link name="body2">
+    <collision name="body2_back_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.30500 1.00000 0.42250"/>
+      <geometry>
+        <box size="0.02000 0.61500 0.84500"/>
+      </geometry>
+    </collision>
+    <visual name="body2_back">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.30500 1.00000 0.42250"/>
+      <material name="gray_wooden"/>
+      <geometry>
+        <box size="0.02000 0.61500 0.84500"/>
+      </geometry>
+    </visual>
+    <collision name="body2_left_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.70250 0.42250"/>
+      <geometry>
+        <box size="0.59000 0.02000 0.84500"/>
+      </geometry>
+    </collision>
+    <visual name="body2_left">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.70250 0.42250"/>
+      <material name="gray_wooden"/>
+      <geometry>
+        <box size="0.59000 0.02000 0.84500"/>
+      </geometry>
+    </visual>
+    <collision name="body2_right_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 1.29750 0.42250"/>
+      <geometry>
+        <box size="0.59000 0.02000 0.84500"/>
+      </geometry>
+    </collision>
+    <visual name="body2_right">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 1.29750 0.42250"/>
+      <material name="gray_wooden"/>
+      <geometry>
+        <box size="0.59000 0.02000 0.84500"/>
+      </geometry>
+    </visual>
+    <collision name="tabletop_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 1.00000 0.85500"/>
+      <geometry>
+        <box size="0.63000 0.61500 0.02000"/>
+      </geometry>
+    </collision>
+    <visual name="tabletop">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 1.00000 0.85500"/>
+      <material name="green_drawer"/>
+      <geometry>
+        <box size="0.63000 0.61500 0.02000"/>
+      </geometry>
+    </visual>
+  </link>
+
+<!-- 引き出し1のtop_drawer1の定義-->
+  <link name="top_drawer1">
     <visual name="handle0">
       <origin rpy="0.00000 0.00000 0.00000" xyz="0.34250 0.00000 0.02"/>
       <material name="black"/>
@@ -175,6 +256,7 @@
       </geometry>
     </visual>
   </link>
+<!-- 引き出し1のmiddle_drawer1の定義-->
   <link name="middle_drawer">
     <visual name="handle0">
       <origin rpy="0.00000 0.00000 0.00000" xyz="0.34250 0.00000 0.02"/>
@@ -276,7 +358,8 @@
       </geometry>
     </visual>
   </link>
-  <link name="bottom_drawer">
+<!-- 引き出し1のbottom_drawer1の定義-->
+  <link name="bottom_drawer1">
     <visual name="handle0">
       <origin rpy="0.00000 0.00000 0.00000" xyz="0.34250 0.00000 0.02"/>
       <material name="black"/>
@@ -371,6 +454,108 @@
     </collision>
     <visual name="drawer_right">
       <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.26750 -0.02"/>
+      <material name="white_wooden"/>
+      <geometry>
+        <box size="0.59000 0.02000 0.10000"/>
+      </geometry>
+    </visual>
+  </link>
+<!-- 引き出し2のbottom_drawer1の定義-->
+  <link name="bottom_drawer2">
+    <visual name="handle0">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.34250 1.00000 0.02"/>
+      <material name="black"/>
+      <geometry>
+        <box size="0.005000 0.10000 0.00500"/>
+      </geometry>
+    </visual>
+    <visual name="handle1">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.33250 0.95000 0.02"/>
+      <material name="black"/>
+      <geometry>
+        <box size="0.020000 0.00500 0.00500"/>
+      </geometry>
+    </visual>
+    <visual name="handle2">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.33250 1.05000 0.02"/>
+      <material name="black"/>
+      <geometry>
+        <box size="0.020000 0.00500 0.00500"/>
+      </geometry>
+    </visual>
+    <collision name="drawer_front_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.30500 1.00000 0.0"/>
+      <geometry>
+        <box size="0.015000 0.61500 0.14000"/>
+      </geometry>
+    </collision>
+    <visual name="drawer_front">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.30500 1.00000 0.0"/>
+      <material name="gray_wooden"/>
+      <geometry>
+        <box size="0.015000 0.61500 0.14000"/>
+      </geometry>
+    </visual>
+    <collision name="drawer_back_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.28500 1.00000 -0.02"/>
+      <geometry>
+        <box size="0.02000 0.51500 0.10000"/>
+      </geometry>
+    </collision>
+    <visual name="drawer_back">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.28500 1.00000 -0.02"/>
+      <material name="white_wooden"/>
+      <geometry>
+        <box size="0.02000 0.51500 0.10000"/>
+      </geometry>
+    </visual>
+    <collision name="drawer_interior_bottom_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 1.00000 -0.06"/>
+      <geometry>
+        <box size="0.55000 0.51500 0.02000"/>
+      </geometry>
+    </collision>
+    <visual name="drawer_interior_bottom">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 1.00000 -0.06"/>
+      <material name="white_wooden"/>
+      <geometry>
+        <box size="0.55000 0.51500 0.02000"/>
+      </geometry>
+    </visual>
+    <collision name="drawer_interior_front_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.28500 1.00000 -0.02"/>
+      <geometry>
+        <box size="0.02000 0.51500 0.10000"/>
+      </geometry>
+    </collision>
+    <visual name="drawer_interior_front">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.28500 1.00000 -0.02"/>
+      <material name="white_wooden"/>
+      <geometry>
+        <box size="0.02000 0.51500 0.10000"/>
+      </geometry>
+    </visual>
+    <collision name="drawer_left_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.73250 -0.02"/>
+      <geometry>
+        <box size="0.59000 0.02000 0.10000"/>
+      </geometry>
+    </collision>
+    <visual name="drawer_left">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.73250 -0.02"/>
+      <material name="white_wooden"/>
+      <geometry>
+        <box size="0.59000 0.02000 0.10000"/>
+      </geometry>
+    </visual>
+    <collision name="drawer_right_collision">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 1.26750 -0.02"/>
+      <geometry>
+        <box size="0.59000 0.02000 0.10000"/>
+      </geometry>
+    </collision>
+    <visual name="drawer_right">
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 1.26750 -0.02"/>
       <material name="white_wooden"/>
       <geometry>
         <box size="0.59000 0.02000 0.10000"/>
