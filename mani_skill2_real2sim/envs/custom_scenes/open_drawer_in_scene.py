@@ -19,7 +19,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self,
         light_mode: Optional[str] = None,
         camera_mode: Optional[str] = None,
-        station_name: float = "mk_station",
+        station_name: str = None,
         cabinet_joint_friction: float = 0.05,
         prepackaged_config: bool = False,
         **kwargs,
@@ -36,6 +36,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         if self.prepackaged_config:
             # use prepackaged evaluation configs (visual matching)
             kwargs.update(self._setup_prepackaged_env_init_config())
+
 
         super().__init__(**kwargs)
 
@@ -54,7 +55,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         )  # dummy path; to be replaced later
         ret["rgb_overlay_cameras"] = ["overhead_camera"]
         ret["shader_dir"] = "rt"
-        self.station_name = "mk_station_original"
+        self.station_name = "color_3"
         self.light_mode = "simple"
         ret["disable_bad_material"] = True
 
@@ -123,6 +124,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self._load_arena_helper(add_collision=False)
 
     def _load_articulations(self):
+
         filename = str(self.asset_root / f"{self.station_name}.urdf")
         loader = self._scene.create_urdf_loader()
         loader.fix_root_link = True
@@ -130,7 +132,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self.art_obj.name = 'cabinet'
         print("cabinet loaded")
         # TODO: This pose can be tuned for different rendering approachs.
-        self.art_obj.set_pose(sapien.Pose([-0.295, -0.2, 0.017], [1, 0, 0, 0]))
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.0, 0.017], [1, 0, 0, 0]))
         print("cabinet loaded1")
         for joint in self.art_obj.get_active_joints():
             # friction seems more important
@@ -244,9 +246,27 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
     def evaluate(self, **kwargs):
         qpos = self.art_obj.get_qpos()[self.joint_idx]
         self.episode_stats["qpos"] = "{:.3f}".format(qpos)
+        return dict(success = qpos >= 0.2, qpos=qpos, episode_stats=self.episode_stats)
+
+    def get_language_instruction(self, **kwargs):
+        return f"open {self.drawer_id} drawer"
+
+
+#------------------------------------------------------------------------------------
+#デフォルトクラス
+#------------------------------------------------------------------------------------
+@register_env("OpenDrawerCustomInScene-v0", max_episode_steps=200)
+class OpenDrawerCustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","middle","bottom"]
+    
+@register_env("OpenAndCloseDrawerCustomInScene-v0", max_episode_steps=200)
+class OpenAndCloseDrawerCustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","middle","bottom"]
+    def evaluate(self, **kwargs):
+        qpos = self.art_obj.get_qpos()[self.joint_idx]
+        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
         if qpos >= 0.2 and self.num == None: #qposが0.2以上かつopenのタスク中だったら
             self.num = 1 #openできたら1にする
-        print(f"------------------------------{self.num}------------------------------------------------------")#一時的に追加
         return dict(success = self.num == 1 and qpos <= 0.2, qpos=qpos, episode_stats=self.episode_stats)
 
     def get_language_instruction(self, **kwargs):
@@ -257,26 +277,17 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         print(f"close {self.drawer_id} drawer")
         return f"close {self.drawer_id} drawer"
 
-
-@register_env("OpenDrawerCustomInScene-v0", max_episode_steps=200)
-class OpenDrawerCustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
-    drawer_ids = ["top", "middle", "bottom"]
-
-
 @register_env("OpenTopDrawerCustomInScene-v0", max_episode_steps=113)
 class OpenTopDrawerCustomInSceneEnv(OpenDrawerCustomInSceneEnv):
     drawer_ids = ["top"]
-
 
 @register_env("OpenMiddleDrawerCustomInScene-v0", max_episode_steps=113)
 class OpenMiddleDrawerCustomInSceneEnv(OpenDrawerCustomInSceneEnv):
     drawer_ids = ["middle"]
 
-
 @register_env("OpenBottomDrawerCustomInScene-v0", max_episode_steps=113)
 class OpenBottomDrawerCustomInSceneEnv(OpenDrawerCustomInSceneEnv):
     drawer_ids = ["bottom"]
-
 
 class CloseDrawerInSceneEnv(OpenDrawerInSceneEnv):
 
@@ -297,22 +308,1047 @@ class CloseDrawerInSceneEnv(OpenDrawerInSceneEnv):
     def get_language_instruction(self):
         return f"close {self.drawer_id} drawer"
 
-
 @register_env("CloseDrawerCustomInScene-v0", max_episode_steps=113)
 class CloseDrawerCustomInSceneEnv(CloseDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
     drawer_ids = ["top", "middle", "bottom"]
-
 
 @register_env("CloseTopDrawerCustomInScene-v0", max_episode_steps=113)
 class CloseTopDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
     drawer_ids = ["top"]
 
-
 @register_env("CloseMiddleDrawerCustomInScene-v0", max_episode_steps=113)
 class CloseMiddleDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
     drawer_ids = ["middle"]
 
-
 @register_env("CloseBottomDrawerCustomInScene-v0", max_episode_steps=113)
 class CloseBottomDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
     drawer_ids = ["bottom"]
+
+#------------------------------------------------------------------------------------
+#実験用の27クラス
+#------------------------------------------------------------------------------------
+@register_env("Color111CustomInScene-v0", max_episode_steps=200)
+class Color111CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","middle","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+
+@register_env("Color211CustomInScene-v0", max_episode_steps=200)
+class Color211CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","middle","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    
+@register_env("Color311CustomInScene-v0", max_episode_steps=200)
+class Color311CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","middle","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    
+@register_env("Color112CustomInScene-v0", max_episode_steps=200)
+class Color112CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+
+@register_env("Color212CustomInScene-v0", max_episode_steps=200)
+class Color212CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    
+@register_env("Color312CustomInScene-v0", max_episode_steps=200)
+class Color312CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+
+@register_env("Color113CustomInScene-v0", max_episode_steps=200)
+class Color113CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+
+@register_env("Color213CustomInScene-v0", max_episode_steps=200)
+class Color213CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    
+@register_env("Color313CustomInScene-v0", max_episode_steps=200)
+class Color313CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+
+@register_env("Color121CustomInScene-v0", max_episode_steps=200)
+class Color121CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["middle","middle","middle"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color131CustomInScene-v0", max_episode_steps=200)
+class Color131CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["middle","middle","middle"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color122CustomInScene-v0", max_episode_steps=200)
+class Color122CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color132CustomInScene-v0", max_episode_steps=200)
+class Color132CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color123CustomInScene-v0", max_episode_steps=200)
+class Color123CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color133CustomInScene-v0", max_episode_steps=200)
+class Color133CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_1"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+
+
+
+
+
+@register_env("Color221CustomInScene-v0", max_episode_steps=200)
+class Color221CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["middle","middle","middle"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color321CustomInScene-v0", max_episode_steps=200)
+class Color321CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["middle","middle","middle"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color231CustomInScene-v0", max_episode_steps=200)
+class Color231CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["middle","middle","middle"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color331CustomInScene-v0", max_episode_steps=200)
+class Color331CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["middle","middle","middle"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color222CustomInScene-v0", max_episode_steps=200)
+class Color222CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color322CustomInScene-v0", max_episode_steps=200)
+class Color322CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color232CustomInScene-v0", max_episode_steps=200)
+class Color232CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color332CustomInScene-v0", max_episode_steps=200)
+class Color332CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top","top","top"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+
+
+
+
+@register_env("Color223CustomInScene-v0", max_episode_steps=200)
+class Color223CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color233CustomInScene-v0", max_episode_steps=200)
+class Color233CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_2"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color323CustomInScene-v0", max_episode_steps=200)
+class Color323CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, 0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
+
+@register_env("Color333CustomInScene-v0", max_episode_steps=200)
+class Color333CustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["bottom","bottom","bottom"]
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "google_robot_static"
+        ret["control_freq"] = 3
+        ret["sim_freq"] = 513
+        ret[
+            "control_mode"
+        ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
+        ret["scene_name"] = "dummy_drawer"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/open_drawer_a0.png"
+        )  # dummy path; to be replaced later
+        ret["rgb_overlay_cameras"] = ["overhead_camera"]
+        ret["shader_dir"] = "rt"
+        self.station_name = "color_3"
+        self.light_mode = "simple"
+        ret["disable_bad_material"] = True
+        return ret
+    def _load_articulations(self):
+
+        filename = str(self.asset_root / f"{self.station_name}.urdf")
+        loader = self._scene.create_urdf_loader()
+        loader.fix_root_link = True
+        self.art_obj = loader.load(filename)
+        self.art_obj.name = 'cabinet'
+        print("cabinet loaded")
+        # TODO: This pose can be tuned for different rendering approachs.
+        self.art_obj.set_pose(sapien.Pose([-0.345, -0.1, 0.017], [1, 0, 0, 0]))
+        print("cabinet loaded1")
+        for joint in self.art_obj.get_active_joints():
+            # friction seems more important
+            # joint.set_friction(0.1)
+            joint.set_friction(self.cabinet_joint_friction)
+            joint.set_drive_property(stiffness=0, damping=1)
+
+        self.drawer_obj = get_entity_by_name(
+            self.art_obj.get_links(), f"{self.drawer_id}_drawer"
+        )
+        self.joint_names = [j.name for j in self.art_obj.get_active_joints()]
+        self.joint_idx = self.joint_names.index(f"{self.drawer_id}_drawer_joint")
