@@ -248,7 +248,9 @@ class PlaceObjectInClosedDrawerInSceneEnv(OpenDrawerInSceneEnv):
     
     def get_language_instruction(self, **kwargs):
         if self.cur_subtask_id == 0:
-            return f"open {self.drawer_id} drawer"
+            # return f"open {self.drawer_id} drawer"
+            return f"open drawer"
+
         else:
             model_name = self._get_instruction_obj_name(self.model_id)
             return f"place {model_name} into {self.drawer_id} drawer"

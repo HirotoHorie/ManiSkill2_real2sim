@@ -220,7 +220,8 @@ class CustomSceneEnv(BaseEnv):
     def _settle(self, t):
         # step the simulation and let the scene settle for t seconds
         sim_steps = int(self.sim_freq * t)
-        for _ in range(sim_steps):
+        for i in range(sim_steps):
+            print(f"settling...{i}")
             self._scene.step()
     
     def reset(self, seed=None, options=None):
@@ -472,6 +473,7 @@ class CustomOtherObjectsInSceneEnv(CustomSceneEnv):
     ):
         builder = scene.create_actor_builder()
         model_dir = Path(root_dir) / "models" / model_id
+
 
         collision_file = str(model_dir / "collision.obj")
         builder.add_multiple_collisions_from_file(
