@@ -57,6 +57,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self.drawer_pos = drawer_pos
         self.drawer_quat = drawer_quat
         self.drawer_rot = drawer_rot
+        self.init_drawer_pos = None
 
         self.force_advance_subtask_time_steps = force_advance_subtask_time_steps
 
@@ -276,7 +277,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
 
     def evaluate(self, **kwargs):
         qpos = self.art_obj.get_qpos()[self.joint_idx]
-        print(f"qpos: {qpos}") 
+        # print(f"qpos: {qpos}") 
         self.episode_stats["qpos"] = "{:.3f}".format(qpos)
         return dict(success = qpos >= 0.2, qpos=qpos, episode_stats=self.episode_stats)
 
@@ -325,13 +326,14 @@ class CloseDrawerInSceneEnv(OpenDrawerInSceneEnv):
         if "obj_init_options" not in options:
             options["obj_init_options"] = dict()
         if "cabinet_init_qpos" not in options["obj_init_options"]:
-            scale = np.random.choice([0.95,0.96,0.97,0.98,0.99,1.0,1.01,1.02,1.03,1.04,1.05])
+            scale = np.random.choice([1.0,1.01,1.02,1.03,1.04,1.05,1.06,1.07,1.08,1.09,1.1,1.11,1.12])
             options["obj_init_options"]["cabinet_init_qpos"] = 0.2 * scale
+            self.init_drawer_pos = 0.2 * scale
         return super().reset(seed=seed, options=options)
 
     def evaluate(self, **kwargs):
         qpos = self.art_obj.get_qpos()[self.joint_idx]
-        print(f"qpos: {qpos}")
+        # print(f"qpos: {qpos}")
         self.episode_stats["qpos"] = "{:.3f}".format(qpos)
         return dict(success=qpos <= 0.05, qpos=qpos, episode_stats=self.episode_stats)
 
@@ -368,9 +370,9 @@ class OpenCloseDrawerInSceneEnv(OpenDrawerCustomInSceneEnv, CustomOtherObjectsIn
     def get_language_instruction(self, **kwargs):
         if self.num == None:
             print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
-            print(f"open {self.drawer_id} drawer")
+            # print(f"open {self.drawer_id} drawer")
             return f"open {self.drawer_id} drawer"
-        print(f"close {self.drawer_id} drawer")
+        # print(f"close {self.drawer_id} drawer")
         return f"close {self.drawer_id} drawer"
 
 @register_env("OpenCloseTopDrawerInScene-v0", max_episode_steps=300)
@@ -574,7 +576,7 @@ class OpenTopDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
             self.set_main_rng(None)
             self.set_episode_rng(None)
             # obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [0.2, 0.2], [2])
-            obj_init_xy = [0,0]
+            obj_init_xy = [0.15,0.15]
             obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_rot)
         obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
         obj_init_z = obj_init_z - 0.1  # let object fall onto the table
@@ -634,8 +636,9 @@ class OpenMiddleDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv)
             self._main_seed = None
             self.set_main_rng(None)
             self.set_episode_rng(None)
-            obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [-0.2, 0.2], [2])
-            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_quat)
+            # obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [0.2, 0.2], [2])
+            obj_init_xy = [0.15,0.15]
+            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_rot)
         obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
         obj_init_z = obj_init_z - 0.25  # let object fall onto the table
         obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
@@ -694,8 +697,9 @@ class OpenBottomDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv)
             self._main_seed = None
             self.set_main_rng(None)
             self.set_episode_rng(None)
-            obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [-0.2, 0.2], [2])
-            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_quat)
+            # obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [0.2, 0.2], [2])
+            obj_init_xy = [0.15,0.15]
+            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_rot)
         obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
         obj_init_z = obj_init_z - 0.5  # let object fall onto the table
         obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
@@ -747,7 +751,7 @@ class OpenBottomDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv)
 #-----------------------------------------------------------------------------------
 #Closewithdistクラス
 #-----------------------------------------------------------------------------------
-class CloseDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
+class CloseDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
     def reset(self, seed=None, options=None):
         if options is None:
             options = dict()
@@ -756,11 +760,12 @@ class CloseDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
         if "cabinet_init_qpos" not in options["obj_init_options"]:
             scale = np.random.choice([0.95,0.96,0.97,0.98,0.99,1.0,1.01,1.02,1.03,1.04,1.05])
             options["obj_init_options"]["cabinet_init_qpos"] = 0.2 * scale
+            self.init_drawer_pos = 0.2 * scale
         return super().reset(seed=seed, options=options)
 
     def evaluate(self, **kwargs):
         qpos = self.art_obj.get_qpos()[self.joint_idx]
-        print(f"qpos: {qpos}")
+        # print(f"qpos: {qpos}")
         self.episode_stats["qpos"] = "{:.3f}".format(qpos)
         return dict(success=qpos <= 0.05, qpos=qpos, episode_stats=self.episode_stats)
 
@@ -768,22 +773,201 @@ class CloseDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
         return f"close {self.drawer_id} drawer"
     
 @register_env("CloseTopDrawerWithDistractorsScene-v0", max_episode_steps=300)
-class CloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
+class CloseTopDrawerWithDistractorsSceneEnv(CloseDrawerInSceneEnv, OpenTopDrawerWithDistractorsSceneEnv):
     drawer_ids = ["top"]
+    def _initialize_actors(self):
+        # The object will fall from a certain initial height
+        obj_init_xy = self.obj_init_options.get("init_xy", None)
+        if obj_init_xy is None:
+            self._main_seed = None
+            self.set_main_rng(None)
+            self.set_episode_rng(None)
+            obj_init_xy = self._episode_rng.uniform([0.16, -0.15], [0.215, 0.15], [2])
+            # obj_init_xy = [0.15,0.15] 
+            obj_init_xy = [x + y for x, y in zip(obj_init_xy, [self.init_drawer_pos,0])]
+            print(obj_init_xy)
+            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_rot)
+            print(obj_init_xy)
+            obj_init_xy = [0.2, 0]
+        obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
+        obj_init_z = obj_init_z - 0.08 # let object fall onto the table
+        obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
+        p = np.hstack([obj_init_xy, obj_init_z])
+        q = obj_init_rot_quat
 
-@register_env("CloseTopDrawerWithDistractorsScene-v0", max_episode_steps=300)
-class CloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
-    drawer_ids = ["top"]
+        # Rotate along z-axis
+        if self.obj_init_options.get("init_rand_rot_z", False):
+            ori = self._episode_rng.uniform(0, 2 * np.pi)
+            q = qmult(euler2quat(0, 0, ori), q)
+
+        # Rotate along a random axis by a small angle
+        if (
+            init_rand_axis_rot_range := self.obj_init_options.get(
+                "init_rand_axis_rot_range", 0.0
+            )
+        ) > 0:
+            axis = self._episode_rng.uniform(-1, 1, 3)
+            axis = axis / max(np.linalg.norm(axis), 1e-6)
+            ori = self._episode_rng.uniform(0, init_rand_axis_rot_range)
+            q = qmult(q, axangle2quat(axis, ori, True))
+        self.obj.set_pose(sapien.Pose(p, q))
+
+        # Move the robot far away to avoid collision
+        # The robot should be initialized later in _initialize_agent (in base_env.py)
+        self.agent.robot.set_pose(sapien.Pose([-10, 0, 0]))
+
+        # Lock rotation around x and y to let the target object fall onto the table
+        self.obj.lock_motion(0, 0, 0, 1, 1, 0)
+        self._settle(0.5)
+
+        # Unlock motion
+        self.obj.lock_motion(0, 0, 0, 0, 0, 0)
+        # NOTE(jigu): Explicit set pose to ensure the actor does not sleep
+        self.obj.set_pose(self.obj.pose)
+        self.obj.set_velocity(np.zeros(3))
+        self.obj.set_angular_velocity(np.zeros(3))
+        self._settle(0.5)
+
+        # Some objects need longer time to settle
+        lin_vel = np.linalg.norm(self.obj.velocity)
+        ang_vel = np.linalg.norm(self.obj.angular_velocity)
+        if lin_vel > 1e-3 or ang_vel > 1e-2:
+            self._settle(1.5)
+
+        # Record the object height after it settles
+        self.obj_height_after_settle = self.obj.pose.p[2]
 
 @register_env("CloseMiddleDrawerWithDistractorsScene-v0", max_episode_steps=300)
-class CloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
+class CloseMiddleDrawerWithDistractorsSceneEnv(CloseDrawerWithDistractorsSceneEnv, OpenMiddleDrawerWithDistractorsSceneEnv):
     drawer_ids = ["middle"]
+    def _initialize_actors(self):
+        # The object will fall from a certain initial height
+        obj_init_xy = self.obj_init_options.get("init_xy", None)
+        if obj_init_xy is None:
+            self._main_seed = None
+            self.set_main_rng(None)
+            self.set_episode_rng(None)
+            # obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [0.2, 0.2], [2])
+            obj_init_xy = [0.45,0.15] 
+            # obj_init_xy = [x + y for x, y in zip(obj_init_xy, [self.init_drawer_pos,0])
+            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_rot)
+            print(obj_init_xy)
+        obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
+        obj_init_z = obj_init_z - 0.25  # let object fall onto the table
+        obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
+        p = np.hstack([obj_init_xy, obj_init_z])
+        q = obj_init_rot_quat
+
+        # Rotate along z-axis
+        if self.obj_init_options.get("init_rand_rot_z", False):
+            ori = self._episode_rng.uniform(0, 2 * np.pi)
+            q = qmult(euler2quat(0, 0, ori), q)
+
+        # Rotate along a random axis by a small angle
+        if (
+            init_rand_axis_rot_range := self.obj_init_options.get(
+                "init_rand_axis_rot_range", 0.0
+            )
+        ) > 0:
+            axis = self._episode_rng.uniform(-1, 1, 3)
+            axis = axis / max(np.linalg.norm(axis), 1e-6)
+            ori = self._episode_rng.uniform(0, init_rand_axis_rot_range)
+            q = qmult(q, axangle2quat(axis, ori, True))
+        self.obj.set_pose(sapien.Pose(p, q))
+
+        # Move the robot far away to avoid collision
+        # The robot should be initialized later in _initialize_agent (in base_env.py)
+        self.agent.robot.set_pose(sapien.Pose([-10, 0, 0]))
+
+        # Lock rotation around x and y to let the target object fall onto the table
+        self.obj.lock_motion(0, 0, 0, 1, 1, 0)
+        self._settle(0.5)
+
+        # Unlock motion
+        self.obj.lock_motion(0, 0, 0, 0, 0, 0)
+        # NOTE(jigu): Explicit set pose to ensure the actor does not sleep
+        self.obj.set_pose(self.obj.pose)
+        self.obj.set_velocity(np.zeros(3))
+        self.obj.set_angular_velocity(np.zeros(3))
+        self._settle(0.5)
+
+        # Some objects need longer time to settle
+        lin_vel = np.linalg.norm(self.obj.velocity)
+        ang_vel = np.linalg.norm(self.obj.angular_velocity)
+        if lin_vel > 1e-3 or ang_vel > 1e-2:
+            self._settle(1.5)
+
+        # Record the object height after it settles
+        self.obj_height_after_settle = self.obj.pose.p[2]
+
+@register_env("CloseBottomDrawerWithDistractorsScene-v0", max_episode_steps=300)
+class CloseBottomDrawerWithDistractorsSceneEnv(CloseDrawerWithDistractorsSceneEnv, OpenBottomDrawerWithDistractorsSceneEnv):
+    drawer_ids = ["bottom"]
+    def _initialize_actors(self):
+        # The object will fall from a certain initial height
+        obj_init_xy = self.obj_init_options.get("init_xy", None)
+        if obj_init_xy is None:
+            self._main_seed = None
+            self.set_main_rng(None)
+            self.set_episode_rng(None)
+            # obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [0.2, 0.2], [2])
+            obj_init_xy = [0.45,0.15] 
+            # obj_init_xy = [x + y for x, y in zip(obj_init_xy, [self.init_drawer_pos,0])
+            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_rot)
+            print(obj_init_xy)
+        obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
+        obj_init_z = obj_init_z - 0.5  # let object fall onto the table
+        obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
+        p = np.hstack([obj_init_xy, obj_init_z])
+        q = obj_init_rot_quat
+
+        # Rotate along z-axis
+        if self.obj_init_options.get("init_rand_rot_z", False):
+            ori = self._episode_rng.uniform(0, 2 * np.pi)
+            q = qmult(euler2quat(0, 0, ori), q)
+
+        # Rotate along a random axis by a small angle
+        if (
+            init_rand_axis_rot_range := self.obj_init_options.get(
+                "init_rand_axis_rot_range", 0.0
+            )
+        ) > 0:
+            axis = self._episode_rng.uniform(-1, 1, 3)
+            axis = axis / max(np.linalg.norm(axis), 1e-6)
+            ori = self._episode_rng.uniform(0, init_rand_axis_rot_range)
+            q = qmult(q, axangle2quat(axis, ori, True))
+        self.obj.set_pose(sapien.Pose(p, q))
+
+        # Move the robot far away to avoid collision
+        # The robot should be initialized later in _initialize_agent (in base_env.py)
+        self.agent.robot.set_pose(sapien.Pose([-10, 0, 0]))
+
+        # Lock rotation around x and y to let the target object fall onto the table
+        self.obj.lock_motion(0, 0, 0, 1, 1, 0)
+        self._settle(0.5)
+
+        # Unlock motion
+        self.obj.lock_motion(0, 0, 0, 0, 0, 0)
+        # NOTE(jigu): Explicit set pose to ensure the actor does not sleep
+        self.obj.set_pose(self.obj.pose)
+        self.obj.set_velocity(np.zeros(3))
+        self.obj.set_angular_velocity(np.zeros(3))
+        self._settle(0.5)
+
+        # Some objects need longer time to settle
+        lin_vel = np.linalg.norm(self.obj.velocity)
+        ang_vel = np.linalg.norm(self.obj.angular_velocity)
+        if lin_vel > 1e-3 or ang_vel > 1e-2:
+            self._settle(1.5)
+
+        # Record the object height after it settles
+        self.obj_height_after_settle = self.obj.pose.p[2]
 #-----------------------------------------------------------------------------------
 #OpenClosewithdistクラス
 #-----------------------------------------------------------------------------------
-@register_env("OpenCloseBottomDrawerWithDistractorsScene-v0", max_episode_steps=300)
+@register_env("OpenCloseTopDrawerWithDistractorsScene-v0", max_episode_steps=300)
 class OpenCloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
-    drawer_ids = ["bottom"]
+    drawer_ids = ["top"]
     def evaluate(self, **kwargs):
         qpos = self.art_obj.get_qpos()[self.joint_idx]
         self.episode_stats["qpos"] = "{:.3f}".format(qpos)
@@ -794,9 +978,9 @@ class OpenCloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsScen
     def get_language_instruction(self, **kwargs):
         if self.num == None:
             print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
-            print(f"open {self.drawer_id} drawer")
+            # print(f"open {self.drawer_id} drawer")
             return f"open {self.drawer_id} drawer"
-        print(f"close {self.drawer_id} drawer")
+        # print(f"close {self.drawer_id} drawer")
         return f"close {self.drawer_id} drawer"
     
 @register_env("OpenCloseMiddleDrawerWithDistractorsScene-v0", max_episode_steps=300)
@@ -812,9 +996,9 @@ class OpenCloseMiddleDrawerWithDistractorsSceneEnv(OpenMiddleDrawerWithDistracto
     def get_language_instruction(self, **kwargs):
         if self.num == None:
             print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
-            print(f"open {self.drawer_id} drawer")
+            # print(f"open {self.drawer_id} drawer")
             return f"open {self.drawer_id} drawer"
-        print(f"close {self.drawer_id} drawer")
+        # print(f"close {self.drawer_id} drawer")
         return f"close {self.drawer_id} drawer"
     
 @register_env("OpenCloseBottomDrawerWithDistractorsScene-v0", max_episode_steps=300)
@@ -830,7 +1014,7 @@ class OpenCloseBottomDrawerWithDistractorsSceneEnv(OpenBottomDrawerWithDistracto
     def get_language_instruction(self, **kwargs):
         if self.num == None:
             print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
-            print(f"open {self.drawer_id} drawer")
+            # print(f"open {self.drawer_id} drawer")
             return f"open {self.drawer_id} drawer"
-        print(f"close {self.drawer_id} drawer")
+        # print(f"close {self.drawer_id} drawer")
         return f"close {self.drawer_id} drawer"
