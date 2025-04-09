@@ -29,7 +29,8 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         cabinet_joint_friction: float = 0.05,
         prepackaged_config: bool = None,
         drawer_pos: List[float] = [-0.295, 0.0, 0.017],
-        drawer_quat: List[float] = [0, 0, 0],
+        drawer_quat: List[float] = [0, 0, 0], #クォータニオン
+        drawer_rot: List[float] = [0, 0, 0], #オイラー角
         **kwargs,
     ):
         self.light_mode = light_mode
@@ -55,6 +56,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self.num = None
         self.drawer_pos = drawer_pos
         self.drawer_quat = drawer_quat
+        self.drawer_rot = drawer_rot
 
         self.force_advance_subtask_time_steps = force_advance_subtask_time_steps
 
@@ -159,7 +161,6 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         print("cabinet loaded")
         # TODO: This pose can be tuned for different rendering approachs.
         self.art_obj.set_pose(sapien.Pose(self.drawer_pos, self.drawer_quat))
-        print("cabinet loaded1")
         for joint in self.art_obj.get_active_joints():
             # friction seems more important
             # joint.set_friction(0.1)
@@ -196,6 +197,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         obj_init_options = options.get("obj_init_options", {})
         obj_init_options = obj_init_options.copy()
         cabinet_init_qpos = obj_init_options.get("cabinet_init_qpos", None)
+
         if cabinet_init_qpos is not None:
             if isinstance(cabinet_init_qpos, float):
                 # set qpos for target cabinet joint
@@ -206,6 +208,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         else:
             self.art_obj.set_qpos([0.0] * self.art_obj.dof) # ensure that the drawer is closed
         obs = self.get_obs()
+
 
         info.update(
             {
@@ -238,7 +241,9 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
             0.222,
         ]
         robot_init_rotzs = [-0.03, -0.02, -0.06, 0, 0, 0, 0, -0.025, -0.025]
-        idx_chosen = self._episode_rng.choice(len(overlay_ids))
+        # idx_chosen = self._episode_rng.choice(len(overlay_ids))
+        idx_chosen = 3
+
 
         options["robot_init_options"] = {
             "init_xy": [robot_init_xs[idx_chosen], robot_init_ys[idx_chosen]],
@@ -271,6 +276,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
 
     def evaluate(self, **kwargs):
         qpos = self.art_obj.get_qpos()[self.joint_idx]
+        print(f"qpos: {qpos}") 
         self.episode_stats["qpos"] = "{:.3f}".format(qpos)
         return dict(success = qpos >= 0.2, qpos=qpos, episode_stats=self.episode_stats)
 
@@ -279,15 +285,79 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
 
 
 #------------------------------------------------------------------------------------
-#デフォルトクラス
+#Openクラス
 #------------------------------------------------------------------------------------
 @register_env("OpenDrawerCustomInScene-v0", max_episode_steps=200)
 class OpenDrawerCustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
     drawer_ids = ["top","middle","bottom"]
-    
-@register_env("OpenAndCloseDrawerCustomInScene-v0", max_episode_steps=200)
-class OpenAndCloseDrawerCustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
-    drawer_ids = ["top","middle","bottom"]
+
+    def reset(self, seed=None, options=None):
+        if options is None:
+            options = dict()
+        if "obj_init_options" not in options:
+            options["obj_init_options"] = dict()
+        if "cabinet_init_qpos" not in options["obj_init_options"]:
+            scale = np.random.choice([0.0,0.0,0.0,0.1,0.12,0.14,0.16,0.18,0.2,0.22,0.024,0.26,0.28])
+            options["obj_init_options"]["cabinet_init_qpos"] = 0.2 * scale
+        return super().reset(seed=seed, options=options)
+
+@register_env("OpenTopDrawerInScene-v0", max_episode_steps=200)
+class OpenTopDrawerInSceneEnv(OpenDrawerCustomInSceneEnv):
+    drawer_ids = ["top"]
+
+@register_env("OpenMiddleDrawerInScene-v0", max_episode_steps=200)
+class OpenMiddleDrawerInSceneEnv(OpenDrawerCustomInSceneEnv):
+    drawer_ids = ["middle"]
+
+@register_env("OpenBottomDrawerInScene-v0", max_episode_steps=200)
+class OpenBottomDrawerInSceneEnv(OpenDrawerCustomInSceneEnv):
+    drawer_ids = ["bottom"]
+
+#-----------------------------------------------------------------------------------
+#Closeクラス
+#-----------------------------------------------------------------------------------
+
+class CloseDrawerInSceneEnv(OpenDrawerInSceneEnv):
+
+    def reset(self, seed=None, options=None):
+        if options is None:
+            options = dict()
+        if "obj_init_options" not in options:
+            options["obj_init_options"] = dict()
+        if "cabinet_init_qpos" not in options["obj_init_options"]:
+            scale = np.random.choice([0.95,0.96,0.97,0.98,0.99,1.0,1.01,1.02,1.03,1.04,1.05])
+            options["obj_init_options"]["cabinet_init_qpos"] = 0.2 * scale
+        return super().reset(seed=seed, options=options)
+
+    def evaluate(self, **kwargs):
+        qpos = self.art_obj.get_qpos()[self.joint_idx]
+        print(f"qpos: {qpos}")
+        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
+        return dict(success=qpos <= 0.05, qpos=qpos, episode_stats=self.episode_stats)
+
+    def get_language_instruction(self):
+        return f"close {self.drawer_id} drawer"
+
+@register_env("CloseDrawerCustomInScene-v0", max_episode_steps=200)
+class CloseDrawerCustomInSceneEnv(CloseDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
+    drawer_ids = ["top", "middle", "bottom"]
+
+@register_env("CloseTopDrawerCustomInScene-v0", max_episode_steps=200)
+class CloseTopDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
+    drawer_ids = ["top"]
+
+@register_env("CloseMiddleDrawerCustomInScene-v0", max_episode_steps=200)
+class CloseMiddleDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
+    drawer_ids = ["middle"]
+
+@register_env("CloseBottomDrawerCustomInScene-v0", max_episode_steps=200)
+class CloseBottomDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
+    drawer_ids = ["bottom"]
+
+#-----------------------------------------------------------------------------------
+#OpenCloseクラス
+#-----------------------------------------------------------------------------------
+class OpenCloseDrawerInSceneEnv(OpenDrawerCustomInSceneEnv, CustomOtherObjectsInSceneEnv):
     def evaluate(self, **kwargs):
         qpos = self.art_obj.get_qpos()[self.joint_idx]
         self.episode_stats["qpos"] = "{:.3f}".format(qpos)
@@ -299,116 +369,29 @@ class OpenAndCloseDrawerCustomInSceneEnv(OpenDrawerInSceneEnv, CustomOtherObject
         if self.num == None:
             print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
             print(f"open {self.drawer_id} drawer")
-            exit(0)
             return f"open {self.drawer_id} drawer"
         print(f"close {self.drawer_id} drawer")
         return f"close {self.drawer_id} drawer"
 
-@register_env("OpenTopDrawerCustomInScene-v0", max_episode_steps=113)
-class OpenTopDrawerCustomInSceneEnv(OpenDrawerCustomInSceneEnv):
+@register_env("OpenCloseTopDrawerInScene-v0", max_episode_steps=300)
+class OpenCloseTopDrawerInSceneEnv(OpenCloseDrawerInSceneEnv):
     drawer_ids = ["top"]
 
-@register_env("OpenMiddleDrawerCustomInScene-v0", max_episode_steps=113)
-class OpenMiddleDrawerCustomInSceneEnv(OpenDrawerCustomInSceneEnv):
+@register_env("OpenCloseMiddleDrawerInScene-v0", max_episode_steps=300)
+class OpenCloseMiddleDrawerInSceneEnv(OpenCloseDrawerInSceneEnv):
     drawer_ids = ["middle"]
 
-@register_env("OpenBottomDrawerCustomInScene-v0", max_episode_steps=113)
-class OpenBottomDrawerCustomInSceneEnv(OpenDrawerCustomInSceneEnv):
-    drawer_ids = ["bottom"]
-
-class CloseDrawerInSceneEnv(OpenDrawerInSceneEnv):
-
-    def reset(self, seed=None, options=None):
-        if options is None:
-            options = dict()
-        if "obj_init_options" not in options:
-            options["obj_init_options"] = dict()
-        if "cabinet_init_qpos" not in options["obj_init_options"]:
-            options["obj_init_options"]["cabinet_init_qpos"] = 0.2
-        return super().reset(seed=seed, options=options)
-
-    def evaluate(self, **kwargs):
-        qpos = self.art_obj.get_qpos()[self.joint_idx]
-        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
-        return dict(success=qpos <= 0.05, qpos=qpos, episode_stats=self.episode_stats)
-
-    def get_language_instruction(self):
-        return f"close {self.drawer_id} drawer"
-
-@register_env("CloseDrawerCustomInScene-v0", max_episode_steps=113)
-class CloseDrawerCustomInSceneEnv(CloseDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
-    drawer_ids = ["top", "middle", "bottom"]
-
-@register_env("CloseTopDrawerCustomInScene-v0", max_episode_steps=113)
-class CloseTopDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
-    drawer_ids = ["top"]
-
-@register_env("CloseMiddleDrawerCustomInScene-v0", max_episode_steps=113)
-class CloseMiddleDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
-    drawer_ids = ["middle"]
-
-@register_env("CloseBottomDrawerCustomInScene-v0", max_episode_steps=113)
-class CloseBottomDrawerCustomInSceneEnv(CloseDrawerCustomInSceneEnv):
+@register_env("OpenCloseBottomDrawerInScene-v0", max_episode_steps=300)
+class OpenCloseBottomDrawerInSceneEnv(OpenCloseDrawerInSceneEnv):
     drawer_ids = ["bottom"]
 
 #-----------------------------------------------------------------------------------
 #distractorを使うクラス
 #-----------------------------------------------------------------------------------
-
+#-----------------------------------------------------------------------------------
+#Openwithdistクラス
+#-----------------------------------------------------------------------------------
 class OpenDrawerWithDistractorsSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjectsInSceneEnv):
-
-    # def __init__(
-    #     self,
-    #     force_advance_subtask_time_steps: int = 100,
-    #     prepackaged_config: bool = None,
-    #     light_mode: Optional[str] = None,
-    #     camera_mode: Optional[str] = None,
-    #     station_name: str = None,
-    #     cabinet_joint_friction: float = 0.05,
-    #     **kwargs,
-    # ):
-        # self.model_id = None
-        # self.model_scale = None
-        # self.model_bbox_size = None
-        # self.obj = None
-        # self.obj_init_options = {}
-        # self.prepackaged_config = prepackaged_config
-        # self.light_mode = light_mode
-        # self.camera_mode = camera_mode
-        # self.station_name = station_name
-        # self.cabinet_joint_friction = cabinet_joint_friction
-        # self.episode_stats = None
-        # self.drawer_id = None
-        # self.num = None
-
-        # self.force_advance_subtask_time_steps = force_advance_subtask_time_steps
-    #     if self.prepackaged_config:
-    #         # use prepackaged evaluation configs (visual matching)
-    #         kwargs.update(self._setup_prepackaged_env_init_config())
-
-
-    #     super().__init__(**kwargs)
-
-    # def _setup_prepackaged_env_init_config(self):
-    #     ret = {}
-    #     ret["robot"] = "google_robot_static"
-    #     ret["control_freq"] = 3
-    #     ret["sim_freq"] = 513
-    #     ret[
-    #         "control_mode"
-    #     ] = "arm_pd_ee_delta_pose_align_interpolate_by_planner_gripper_pd_joint_target_delta_pos_interpolate_by_planner"
-    #     ret["scene_name"] = "dummy_drawer"
-    #     ret["camera_cfgs"] = {"add_segmentation": True}
-    #     ret["rgb_overlay_path"] = str(
-    #         ASSET_DIR / "real_inpainting/open_drawer_a0.png"
-    #     )  # dummy path; to be replaced later
-    #     ret["rgb_overlay_cameras"] = ["overhead_camera"]
-    #     ret["shader_dir"] = "rt"
-    #     self.station_name = "color_2"
-    #     self.light_mode = "simple"
-    #     ret["disable_bad_material"] = True
-    #     return ret
-        
 
     def _get_default_scene_config(self):
         scene_config = super()._get_default_scene_config()
@@ -470,58 +453,29 @@ class OpenDrawerWithDistractorsSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjects
         self.obj.set_damping(0.1, 0.1)
 
     def _initialize_actors(self):
-        # The object will fall from a certain initial height
-        obj_init_xy = self.obj_init_options.get("init_xy", None)
-        if obj_init_xy is None:
-            obj_init_xy = self._episode_rng.uniform([-0.10, -0.00], [-0.05, 0.1], [2])
-        obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
-        obj_init_z = obj_init_z + 0.5  # let object fall onto the table
-        obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
-        p = np.hstack([obj_init_xy, obj_init_z])
-        q = obj_init_rot_quat
+        """子クラスでオーバーライドする必要がある"""
+        pass
 
-        # Rotate along z-axis
-        if self.obj_init_options.get("init_rand_rot_z", False):
-            ori = self._episode_rng.uniform(0, 2 * np.pi)
-            q = qmult(euler2quat(0, 0, ori), q)
+    def local_to_world_2d(self, local_xy, drawer_pos, drawer_quat):
+        """
+        引き出しの重心から見たローカル座標 (local_xy) をワールド座標に変換する
+        :param local_xy: 引き出し基準での相対位置 (x, y)
+        :param drawer_pos: 引き出しの重心のワールド位置 [x, y, z]
+        :param drawer_quat: オイラー角 [x, y, z_deg]（クォータニオンじゃなくオイラー角として使う前提）
+        """
+        drawer_xy = np.array(drawer_pos[:2])
+        theta_rad = np.deg2rad(drawer_quat[2])
 
-        # Rotate along a random axis by a small angle
-        if (
-            init_rand_axis_rot_range := self.obj_init_options.get(
-                "init_rand_axis_rot_range", 0.0
-            )
-        ) > 0:
-            axis = self._episode_rng.uniform(-1, 1, 3)
-            axis = axis / max(np.linalg.norm(axis), 1e-6)
-            ori = self._episode_rng.uniform(0, init_rand_axis_rot_range)
-            q = qmult(q, axangle2quat(axis, ori, True))
-        self.obj.set_pose(sapien.Pose(p, q))
+        # 正しい 2D 回転行列
+        R = np.array([
+            [np.cos(theta_rad), -np.sin(theta_rad)],
+            [np.sin(theta_rad),  np.cos(theta_rad)]
+        ])
 
-        # Move the robot far away to avoid collision
-        # The robot should be initialized later in _initialize_agent (in base_env.py)
-        self.agent.robot.set_pose(sapien.Pose([-10, 0, 0]))
-
-        # Lock rotation around x and y to let the target object fall onto the table
-        self.obj.lock_motion(0, 0, 0, 1, 1, 0)
-        self._settle(0.5)
-
-        # Unlock motion
-        self.obj.lock_motion(0, 0, 0, 0, 0, 0)
-        # NOTE(jigu): Explicit set pose to ensure the actor does not sleep
-        self.obj.set_pose(self.obj.pose)
-        self.obj.set_velocity(np.zeros(3))
-        self.obj.set_angular_velocity(np.zeros(3))
-        self._settle(0.5)
-
-        # Some objects need longer time to settle
-        lin_vel = np.linalg.norm(self.obj.velocity)
-        ang_vel = np.linalg.norm(self.obj.angular_velocity)
-        if lin_vel > 1e-3 or ang_vel > 1e-2:
-            self._settle(1.5)
-
-        # Record the object height after it settles
-        self.obj_height_after_settle = self.obj.pose.p[2]
-
+        # 回転 + 平行移動
+        world_xy = R @ local_xy + drawer_xy
+        return world_xy
+    
     def _additional_prepackaged_config_reset(self, options):
         # use prepackaged evaluation configs under visual matching setup
         overlay_ids = ["a0", "a1", "a2", "b0", "b1", "b2", "c0", "c1", "c2"]
@@ -576,7 +530,6 @@ class OpenDrawerWithDistractorsSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjects
             options = dict()
         options = options.copy()
         self.set_episode_rng(seed)
-
         # set objects
         self.obj_init_options = options.get("obj_init_options", {})
         model_scale = options.get("model_scale", None)
@@ -594,70 +547,11 @@ class OpenDrawerWithDistractorsSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjects
 
         return obs, info
 
-    # def _additional_prepackaged_config_reset(self, options):
-    #     # use prepackaged evaluation configs under visual matching setup
-    #     overlay_ids = ["a0", "b0", "c0"]
-    #     rgb_overlay_paths = [
-    #         str(ASSET_DIR / f"real_inpainting/open_drawer_{i}.png") for i in overlay_ids
-    #     ]
-    #     robot_init_xs = [0.644, 0.652, 0.665]
-    #     robot_init_ys = [-0.179, 0.009, 0.224]
-    #     robot_init_rotzs = [-0.03, 0, 0]
-    #     idx_chosen = self._episode_rng.choice(len(overlay_ids))
-
-    #     options["robot_init_options"] = {
-    #         "init_xy": [robot_init_xs[idx_chosen], robot_init_ys[idx_chosen]],
-    #         "init_rot_quat": (
-    #             sapien.Pose(q=euler2quat(0, 0, robot_init_rotzs[idx_chosen]))
-    #             * sapien.Pose(q=[0, 0, 0, 1])
-    #         ).q,
-    #     }
-    #     self.rgb_overlay_path = rgb_overlay_paths[idx_chosen]
-    #     self.rgb_overlay_img = (
-    #         cv2.cvtColor(cv2.imread(rgb_overlay_paths[idx_chosen]), cv2.COLOR_BGR2RGB)
-    #         / 255
-    #     )
-    #     new_urdf_version = self._episode_rng.choice(
-    #         [
-    #             "",
-    #             "recolor_tabletop_visual_matching_1",
-    #             "recolor_tabletop_visual_matching_2",
-    #             "recolor_cabinet_visual_matching_1",
-    #         ]
-    #     )
-    #     if new_urdf_version != self.urdf_version:
-    #         self.urdf_version = new_urdf_version
-    #         self._configure_agent()
-    #         return True
-    #     return False
-
     def _initialize_episode_stats(self):
         self.cur_subtask_id = 0 # 0: open drawer, 1: place object into drawer
         self.episode_stats = OrderedDict(
             qpos=0.0, is_drawer_open=False, has_contact=0
         )
-
-    def evaluate(self, **kwargs):
-        # Drawer
-        qpos = self.art_obj.get_qpos()[self.joint_idx]
-        self.episode_stats["qpos"] = qpos
-        is_drawer_open = qpos >= 0.15
-        self.episode_stats["is_drawer_open"] = self.episode_stats["is_drawer_open"] or is_drawer_open
-
-        # Check whether the object contacts with the drawer
-        contact_infos = get_pairwise_contacts(
-            self._scene.get_contacts(),
-            self.obj,
-            self.drawer_link,
-            collision_shape1=self.drawer_collision,
-        )
-        total_impulse = compute_total_impulse(contact_infos)
-        has_contact = np.linalg.norm(total_impulse) > 1e-6
-        self.episode_stats["has_contact"] += has_contact
-
-        success = (self.cur_subtask_id == 1) and (qpos >= 0.05) and (self.episode_stats["has_contact"] >= 1)
-
-        return dict(success=success, episode_stats=self.episode_stats)
 
     def advance_to_next_subtask(self):
         self.cur_subtask_id = 1
@@ -667,42 +561,8 @@ class OpenDrawerWithDistractorsSceneEnv(OpenDrawerInSceneEnv, CustomOtherObjects
             # force advance to the next subtask
             self.advance_to_next_subtask()
         return super().step(action)
-    
-    # def evaluate(self, **kwargs):
-    #     qpos = self.art_obj.get_qpos()[self.joint_idx]
-    #     self.episode_stats["qpos"] = "{:.3f}".format(qpos)
-    #     return dict(success = qpos >= 0.2, qpos=qpos, episode_stats=self.episode_stats)
 
-    # def get_language_instruction(self, **kwargs):
-    #     return f"open {self.drawer_id} drawer"
-    
-    def evaluate(self, **kwargs):
-        qpos = self.art_obj.get_qpos()[self.joint_idx]
-        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
-        if qpos >= 0.2 and self.num == None: #qposが0.2以上かつopenのタスク中だったら
-            self.num = 1 #openできたら1にする
-        return dict(success = self.num == 1 and qpos <= 0.2, qpos=qpos, episode_stats=self.episode_stats)
-
-    def get_language_instruction(self, **kwargs):
-        if self.num == None:
-            print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
-            print(f"open {self.drawer_id} drawer")
-            return f"open {self.drawer_id} drawer"
-        print(f"close {self.drawer_id} drawer")
-        return f"close {self.drawer_id} drawer"
-    # def get_language_instruction(self, **kwargs):
-    #     if self.cur_subtask_id == 0:
-    #         # return f"open {self.drawer_id} drawer"
-    #         return f"open drawer"
-
-    #     else:
-    #         model_name = self._get_instruction_obj_name(self.model_id)
-    #         return f"place {model_name} into {self.drawer_id} drawer"
-        
-    # def is_final_subtask(self):
-    #     return self.cur_subtask_id == 1
-
-@register_env("OpenTopDrawerWithDistractorsScene-v0", max_episode_steps=300)
+@register_env("OpenTopDrawerWithDistractorsScene-v0", max_episode_steps=200)
 class OpenTopDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
     drawer_ids = ["top"]
 
@@ -710,7 +570,12 @@ class OpenTopDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
         # The object will fall from a certain initial height
         obj_init_xy = self.obj_init_options.get("init_xy", None)
         if obj_init_xy is None:
-            obj_init_xy = self._episode_rng.uniform([-0.10, -0.00], [-0.05, 0.1], [2])
+            self._main_seed = None
+            self.set_main_rng(None)
+            self.set_episode_rng(None)
+            # obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [0.2, 0.2], [2])
+            obj_init_xy = [0,0]
+            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_rot)
         obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
         obj_init_z = obj_init_z - 0.1  # let object fall onto the table
         obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
@@ -759,16 +624,20 @@ class OpenTopDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
         # Record the object height after it settles
         self.obj_height_after_settle = self.obj.pose.p[2]
 
-@register_env("OpenMiddleDrawerWithDistractorsScene-v0", max_episode_steps=300)
+@register_env("OpenMiddleDrawerWithDistractorsScene-v0", max_episode_steps=200)
 class OpenMiddleDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
     drawer_ids = ["middle"]
     def _initialize_actors(self):
         # The object will fall from a certain initial height
         obj_init_xy = self.obj_init_options.get("init_xy", None)
         if obj_init_xy is None:
-            obj_init_xy = self._episode_rng.uniform([-0.10, -0.00], [-0.05, 0.1], [2])
+            self._main_seed = None
+            self.set_main_rng(None)
+            self.set_episode_rng(None)
+            obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [-0.2, 0.2], [2])
+            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_quat)
         obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
-        obj_init_z = obj_init_z - 0.3  # let object fall onto the table
+        obj_init_z = obj_init_z - 0.25  # let object fall onto the table
         obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
         p = np.hstack([obj_init_xy, obj_init_z])
         q = obj_init_rot_quat
@@ -815,14 +684,18 @@ class OpenMiddleDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv)
         # Record the object height after it settles
         self.obj_height_after_settle = self.obj.pose.p[2]
 
-@register_env("OpenBottomDrawerWithDistractorsScene-v0", max_episode_steps=300)
+@register_env("OpenBottomDrawerWithDistractorsScene-v0", max_episode_steps=200)
 class OpenBottomDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
     drawer_ids = ["bottom"]
     def _initialize_actors(self):
         # The object will fall from a certain initial height
         obj_init_xy = self.obj_init_options.get("init_xy", None)
         if obj_init_xy is None:
-            obj_init_xy = self._episode_rng.uniform([-0.10, -0.00], [-0.05, 0.1], [2])
+            self._main_seed = None
+            self.set_main_rng(None)
+            self.set_episode_rng(None)
+            obj_init_xy = self._episode_rng.uniform([-0.2, -0.2], [-0.2, 0.2], [2])
+            obj_init_xy = self.local_to_world_2d(obj_init_xy, self.drawer_pos, self.drawer_quat)
         obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
         obj_init_z = obj_init_z - 0.5  # let object fall onto the table
         obj_init_rot_quat = self.obj_init_options.get("init_rot_quat", [1, 0, 0, 0])
@@ -870,3 +743,94 @@ class OpenBottomDrawerWithDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv)
 
         # Record the object height after it settles
         self.obj_height_after_settle = self.obj.pose.p[2]
+
+#-----------------------------------------------------------------------------------
+#Closewithdistクラス
+#-----------------------------------------------------------------------------------
+class CloseDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
+    def reset(self, seed=None, options=None):
+        if options is None:
+            options = dict()
+        if "obj_init_options" not in options:
+            options["obj_init_options"] = dict()
+        if "cabinet_init_qpos" not in options["obj_init_options"]:
+            scale = np.random.choice([0.95,0.96,0.97,0.98,0.99,1.0,1.01,1.02,1.03,1.04,1.05])
+            options["obj_init_options"]["cabinet_init_qpos"] = 0.2 * scale
+        return super().reset(seed=seed, options=options)
+
+    def evaluate(self, **kwargs):
+        qpos = self.art_obj.get_qpos()[self.joint_idx]
+        print(f"qpos: {qpos}")
+        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
+        return dict(success=qpos <= 0.05, qpos=qpos, episode_stats=self.episode_stats)
+
+    def get_language_instruction(self):
+        return f"close {self.drawer_id} drawer"
+    
+@register_env("CloseTopDrawerWithDistractorsScene-v0", max_episode_steps=300)
+class CloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
+    drawer_ids = ["top"]
+
+@register_env("CloseTopDrawerWithDistractorsScene-v0", max_episode_steps=300)
+class CloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
+    drawer_ids = ["top"]
+
+@register_env("CloseMiddleDrawerWithDistractorsScene-v0", max_episode_steps=300)
+class CloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
+    drawer_ids = ["middle"]
+#-----------------------------------------------------------------------------------
+#OpenClosewithdistクラス
+#-----------------------------------------------------------------------------------
+@register_env("OpenCloseBottomDrawerWithDistractorsScene-v0", max_episode_steps=300)
+class OpenCloseTopDrawerWithDistractorsSceneEnv(OpenTopDrawerWithDistractorsSceneEnv):
+    drawer_ids = ["bottom"]
+    def evaluate(self, **kwargs):
+        qpos = self.art_obj.get_qpos()[self.joint_idx]
+        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
+        if qpos >= 0.2 and self.num == None: #qposが0.2以上かつopenのタスク中だったら
+            self.num = 1 #openできたら1にする
+        return dict(success = self.num == 1 and qpos <= 0.2, qpos=qpos, episode_stats=self.episode_stats)
+
+    def get_language_instruction(self, **kwargs):
+        if self.num == None:
+            print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
+            print(f"open {self.drawer_id} drawer")
+            return f"open {self.drawer_id} drawer"
+        print(f"close {self.drawer_id} drawer")
+        return f"close {self.drawer_id} drawer"
+    
+@register_env("OpenCloseMiddleDrawerWithDistractorsScene-v0", max_episode_steps=300)
+class OpenCloseMiddleDrawerWithDistractorsSceneEnv(OpenMiddleDrawerWithDistractorsSceneEnv):
+    drawer_ids = ["middle"]
+    def evaluate(self, **kwargs):
+        qpos = self.art_obj.get_qpos()[self.joint_idx]
+        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
+        if qpos >= 0.2 and self.num == None: #qposが0.2以上かつopenのタスク中だったら
+            self.num = 1 #openできたら1にする
+        return dict(success = self.num == 1 and qpos <= 0.2, qpos=qpos, episode_stats=self.episode_stats)
+
+    def get_language_instruction(self, **kwargs):
+        if self.num == None:
+            print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
+            print(f"open {self.drawer_id} drawer")
+            return f"open {self.drawer_id} drawer"
+        print(f"close {self.drawer_id} drawer")
+        return f"close {self.drawer_id} drawer"
+    
+@register_env("OpenCloseBottomDrawerWithDistractorsScene-v0", max_episode_steps=300)
+class OpenCloseBottomDrawerWithDistractorsSceneEnv(OpenBottomDrawerWithDistractorsSceneEnv):
+    drawer_ids = ["bottom"]
+    def evaluate(self, **kwargs):
+        qpos = self.art_obj.get_qpos()[self.joint_idx]
+        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
+        if qpos >= 0.2 and self.num == None: #qposが0.2以上かつopenのタスク中だったら
+            self.num = 1 #openできたら1にする
+        return dict(success = self.num == 1 and qpos <= 0.2, qpos=qpos, episode_stats=self.episode_stats)
+
+    def get_language_instruction(self, **kwargs):
+        if self.num == None:
+            print(f"{self.art_obj.get_qpos()[self.joint_idx]}")#qposを出力するように修正
+            print(f"open {self.drawer_id} drawer")
+            return f"open {self.drawer_id} drawer"
+        print(f"close {self.drawer_id} drawer")
+        return f"close {self.drawer_id} drawer"

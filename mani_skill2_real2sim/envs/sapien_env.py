@@ -487,22 +487,46 @@ class BaseEnv(gym.Env):
 
         return self.get_obs(), {}
 
+    # def set_main_rng(self, seed):
+    #     """Set the main random generator (e.g., to generate the seed for each episode)."""
+    #     if seed is None:
+    #         if self._main_seed is not None:
+    #             return
+    #         seed = np.random.RandomState().randint(2 ** 32)
+    #     self._main_seed = seed
+    #     self._main_rng = np.random.RandomState(self._main_seed)
+
+    # def set_episode_rng(self, seed):
+    #     """Set the random generator for current episode."""
+    #     if seed is None:
+    #         self._episode_seed = self._main_rng.randint(2 ** 32)
+    #     else:
+    #         self._episode_seed = seed
+    #     self._episode_rng = np.random.RandomState(self._episode_seed)
+    
     def set_main_rng(self, seed):
-        """Set the main random generator (e.g., to generate the seed for each episode)."""
         if seed is None:
             if self._main_seed is not None:
+                print("main_seed already exists:", self._main_seed)
                 return
             seed = np.random.RandomState().randint(2 ** 32)
+            print("main_seed set randomly:", seed)
+        else:
+            print("main_seed set manually:", seed)
+
         self._main_seed = seed
         self._main_rng = np.random.RandomState(self._main_seed)
 
     def set_episode_rng(self, seed):
-        """Set the random generator for current episode."""
         if seed is None:
             self._episode_seed = self._main_rng.randint(2 ** 32)
+            print("episode_seed set randomly from main_rng:", self._episode_seed)
         else:
+            print("episode_seed set manually:", seed)
             self._episode_seed = seed
+
         self._episode_rng = np.random.RandomState(self._episode_seed)
+
 
     def initialize_episode(self):
         """Initialize the episode, e.g., poses of actors and articulations, and robot configuration.

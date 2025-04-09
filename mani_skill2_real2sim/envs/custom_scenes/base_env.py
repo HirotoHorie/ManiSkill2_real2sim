@@ -221,7 +221,6 @@ class CustomSceneEnv(BaseEnv):
         # step the simulation and let the scene settle for t seconds
         sim_steps = int(self.sim_freq * t)
         for i in range(sim_steps):
-            print(f"settling...{i}")
             self._scene.step()
     
     def reset(self, seed=None, options=None):
