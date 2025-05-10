@@ -11,7 +11,7 @@ from mani_skill2_real2sim.utils.registration import register_env
 from mani_skill2_real2sim import ASSET_DIR
 
 from .base_env import CustomBridgeObjectsInSceneEnv
-from .move_near_in_scene import MoveNearInSceneEnv
+from .other.move_near_in_scene import MoveNearInSceneEnv
 
 class PutOnInSceneEnv(MoveNearInSceneEnv):
     

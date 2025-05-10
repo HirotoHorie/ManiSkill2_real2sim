@@ -11,7 +11,7 @@ from mani_skill2_real2sim.utils.common import random_choice
 from mani_skill2_real2sim.utils.registration import register_env
 from mani_skill2_real2sim.utils.sapien_utils import vectorize_pose
 
-from .base_env import CustomSceneEnv, CustomOtherObjectsInSceneEnv
+from ..base_env import CustomSceneEnv, CustomOtherObjectsInSceneEnv
 
 
 class MoveNearInSceneEnv(CustomSceneEnv):

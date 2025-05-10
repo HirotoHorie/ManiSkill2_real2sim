@@ -507,10 +507,10 @@ class BaseEnv(gym.Env):
     def set_main_rng(self, seed):
         if seed is None:
             if self._main_seed is not None:
-                print("main_seed already exists:", self._main_seed)
+                # print("main_seed already exists:", self._main_seed)
                 return
             seed = np.random.RandomState().randint(2 ** 32)
-            print("main_seed set randomly:", seed)
+            # print("main_seed set randomly:", seed)
         else:
             print("main_seed set manually:", seed)
 
@@ -520,9 +520,9 @@ class BaseEnv(gym.Env):
     def set_episode_rng(self, seed):
         if seed is None:
             self._episode_seed = self._main_rng.randint(2 ** 32)
-            print("episode_seed set randomly from main_rng:", self._episode_seed)
+            # print("episode_seed set randomly from main_rng:", self._episode_seed)
         else:
-            print("episode_seed set manually:", seed)
+            # print("episode_seed set manually:", seed)
             self._episode_seed = seed
 
         self._episode_rng = np.random.RandomState(self._episode_seed)
