@@ -61,7 +61,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self.init_drawer_pos = None
         self.episode_id = episode_id
         # 例
-        with open("object_pos_json/distractors_pos.json", "r") as f:
+        with open("object_pos_json/distractors.json", "r") as f:
             episode_list = json.load(f)
 
         # たとえば id=3 のエピソードをやりたいなら
@@ -96,11 +96,6 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
 
         return ret
 
-    # def _get_default_scene_config(self):
-    #     scene_config = super()._get_default_scene_config()
-    #     scene_config.enable_pcm = True
-    #     return scene_config
-
     def _initialize_agent(self):
         init_qpos = np.array(
             [
@@ -134,9 +129,6 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         )
 
     def _setup_lighting_legacy(self):
-        # self.enable_shadow = True
-        # super()._setup_lighting()
-
         direction = [-0.2, 0, -1]
         if self.light_mode == "vertical":
             direction = [-0.1, 0, -1]
@@ -191,6 +183,9 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self.drawer_id = self._episode_rng.choice(self.drawer_ids)
 
         if self.prepackaged_config:
+            print("=====================================")
+            print("Using prepackaged config")
+            print("=====================================")
             _reconfigure = self._additional_prepackaged_config_reset(options)
             reconfigure = reconfigure or _reconfigure
 

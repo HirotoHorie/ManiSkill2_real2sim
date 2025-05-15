@@ -34,6 +34,15 @@ class OpenCloseDrawerInSceneEnv(OpenDrawerCustomInSceneEnv, CustomOtherObjectsIn
             return f"open {self.drawer_id} drawer"
         # print(f"close {self.drawer_id} drawer")
         return f"close {self.drawer_id} drawer"
+        # return "move the arm away from the drawer"
+    
+    def get_task_progress(self):
+        if self.num == None:
+            return 0.0
+        elif self.num == 1:
+            return 1.0
+        else:
+            return 0.5
 
 @register_env("OpenCloseTopDrawerInScene-v0", max_episode_steps=300)
 class OpenCloseTopDrawerInSceneEnv(OpenCloseDrawerInSceneEnv):

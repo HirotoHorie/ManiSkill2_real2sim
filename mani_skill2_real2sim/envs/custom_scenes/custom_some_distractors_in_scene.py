@@ -16,48 +16,62 @@ from mani_skill2_real2sim.utils.sapien_utils import (
 from .open_drawer_with_distractors_in_scene import OpenDrawerWithDistractorsSceneEnv
 
 #-----------------------------------------------------------------------------------
-@register_env("CustomSomeDistractorsScene-v0", max_episode_steps=300)
 class CustomSomeDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
-    drawer_ids = ["top","middle","bottom"]
+    drawer_ids = ["top", "middle", "bottom"]
+
+    def evaluate(self, **kwargs):
+        qpos = self.art_obj.get_qpos()[self.joint_idx]
+        self.episode_stats["qpos"] = "{:.3f}".format(qpos)
+        print("qpos:", qpos)
+        print("self.num:", self.num)
+        if qpos >= 0.2 and self.num == None: #qposが0.2以上かつopenのタスク中だったら
+            self.num = 1 #openできたら1にする
+        return dict(success = self.num == 1 and qpos >= 0.2, qpos=qpos, episode_stats=self.episode_stats)
+    
+    def get_task_progress(self):
+        if self.num == None:
+            return 0.0
+        elif self.num == 1:
+            return 1.0
+        else:
+            return 0.5
 
     def _initialize_actors(self):
-        """
-        top/middle/bottom すべての drawer に同時に物体を落下配置する
-        """
-
         assert hasattr(self, "objects"), "self.objects が必要です！"
         assert hasattr(self, "current_episode_data"), "self.current_episode_data が必要です！"
 
         distractors = self.current_episode_data["distractors"]
         assert len(distractors) == len(self.objects), "distractors数とobjects数が一致していません！"
 
-
+        # オブジェクトと設定情報をペアにして処理
         for obj, distractor_info in zip(self.objects, distractors):
             x = distractor_info["x"]
             y = distractor_info["y"]
             drawer = distractor_info["drawer"]
 
-            # 各引き出しに応じた z 座標を設定
+            # 各引き出しごとのZ座標設定
             if drawer == "top":
                 obj_init_z = self.scene_table_height - 0.1
             elif drawer == "middle":
                 obj_init_z = self.scene_table_height - 0.25
             elif drawer == "bottom":
                 obj_init_z = self.scene_table_height - 0.5
+            elif drawer == "tabletop":
+                obj_init_z = self.scene_table_height + 0.5
             else:
                 raise ValueError(f"Unknown drawer: {drawer}")
-            
-            # world座標系への変換（drawer_posとdrawer_rot考慮）
+
+            # ワールド座標への変換
             local_pos = np.array([x, y])
             world_xy = self.local_to_world_2d(local_pos, self.drawer_pos, self.drawer_rot)
 
-            # 回転を設定
+            # 回転設定
             rot_degree = distractor_info["rot"]
             rot_radian = np.deg2rad(rot_degree)
             obj_init_rot_quat = euler2quat(0, 0, rot_radian)
 
-            # ポーズをまとめる（修正済）
-            p = np.hstack([world_xy, obj_init_z])  # ← ここが修正点
+            # ポーズ設定
+            p = np.hstack([world_xy, obj_init_z])
             q = obj_init_rot_quat
             obj.set_pose(sapien.Pose(p, q))
 
@@ -67,8 +81,7 @@ class CustomSomeDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
         # ロボットを遠ざける
         self.agent.robot.set_pose(sapien.Pose([-10, 0, 0]))
 
-
-        # 一斉に落とす
+        # 物体を一斉に落とす
         self._settle(0.5)
 
         # ロック解除
@@ -118,3 +131,15 @@ class CustomSomeDistractorsSceneEnv(OpenDrawerWithDistractorsSceneEnv):
 
         # 🛠️ ターゲットオブジェクトをself.objにも設定（必須！）
         self.obj = self.objects[0]  # 最初の1個を代表にする
+
+@register_env("OpenTopDrawerCustomWithDistractorsInScene-v0", max_episode_steps=300)
+class OpenTopDrawerCustomWithDistractorsInSceneEnv(CustomSomeDistractorsSceneEnv):
+    drawer_ids = ["top"]
+
+@register_env("OpenMiddleDrawerCustomWithDistractorsInScene-v0", max_episode_steps=300)
+class OpenTopDrawerCustomWithDistractorsInSceneEnv(CustomSomeDistractorsSceneEnv):
+    drawer_ids = ["middle"]
+
+@register_env("OpenBottomDrawerCustomWithDistractorsInScene-v0", max_episode_steps=300)
+class OpenTopDrawerCustomWithDistractorsInSceneEnv(CustomSomeDistractorsSceneEnv):
+    drawer_ids = ["bottom"]

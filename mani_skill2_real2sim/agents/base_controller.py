@@ -65,7 +65,7 @@ class BaseController:
             active_joint_names = [x.name for x in self.articulation.get_active_joints()]
             print("Joint names of the articulation", active_joint_names)
             print("Joint names of the controller", joint_names)
-            raise err
+            raise err   
 
     def _initialize_action_space(self):
         # self.action_space = spaces.Box(...)
