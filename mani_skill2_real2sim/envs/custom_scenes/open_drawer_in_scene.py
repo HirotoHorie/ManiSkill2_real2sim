@@ -61,7 +61,7 @@ class OpenDrawerInSceneEnv(CustomSceneEnv):
         self.init_drawer_pos = None
         self.episode_id = episode_id
         # 例
-        with open("object_pos_json/distractors.json", "r") as f:
+        with open("object_pos_json/distractors_1.json", "r") as f:
             episode_list = json.load(f)
 
         # たとえば id=3 のエピソードをやりたいなら
